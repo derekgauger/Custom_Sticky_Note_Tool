@@ -55,6 +55,8 @@ def handle_return(event):
     if line_content.lstrip().startswith("- "):
         if line_content.lstrip() == "- ":
             text_widget.delete(line_start, line_end)
+            if num_tabs != 0:
+                text_widget.insert(tk.INSERT, "{}- ".format('\t' * (num_tabs - 1)))
         else:
             text_widget.insert(tk.INSERT, "\n{}- ".format('\t' * num_tabs))
         save_data()
@@ -89,6 +91,50 @@ def ctrl_backspace(event):
     return "break"
 
 
+def duplicate_line(event):
+    text_widget = event.widget
+    cursor_index = text_widget.index(tk.INSERT)
+    line_number, col_number = map(int, cursor_index.split('.'))
+    line_start = f"{line_number}.0"
+    line_end = f"{line_number}.end"
+    line_content = text_widget.get(line_start, line_end)
+    text_widget.insert(line_end, "\n" + line_content)
+
+def move_line_up(event):
+    text_widget = event.widget
+    cursor_index = text_widget.index(tk.INSERT)
+    current_line_number, col_number = map(int, cursor_index.split('.'))
+    current_line_start = f"{current_line_number}.0"
+    current_line_end = f"{current_line_number}.end"
+    current_line_content = text_widget.get(current_line_start, current_line_end)
+    next_line_start = f"{current_line_number - 1}.0"
+    next_line_end = f"{current_line_number - 1}.end"
+    next_line_content = text_widget.get(next_line_start, next_line_end)
+    text_widget.delete(next_line_start, next_line_end)
+    text_widget.delete(current_line_start, current_line_end)
+    text_widget.insert(current_line_end, next_line_content)
+    text_widget.insert(next_line_end, current_line_content)
+
+def move_line_down(event):
+    text_widget = event.widget
+    cursor_index = text_widget.index(tk.INSERT)
+    current_line_number, col_number = map(int, cursor_index.split('.'))
+    current_line_start = f"{current_line_number}.0"
+    current_line_end = f"{current_line_number}.end"
+    current_line_content = text_widget.get(current_line_start, current_line_end)
+    next_line_start = f"{current_line_number + 1}.0"
+    next_line_end = f"{current_line_number + 1}.end"
+    next_line_content = text_widget.get(next_line_start, next_line_end)
+    text_widget.delete(current_line_start, current_line_end)
+    text_widget.delete(next_line_start, next_line_end)
+    text_widget.insert(next_line_end, current_line_content)
+    text_widget.insert(current_line_end, next_line_content)
+
+
+def insert_line_divider(event):
+    text_widget = event.widget
+    text_widget.insert(tk.INSERT, '-' * 100)
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Sticky Note")
@@ -103,14 +149,18 @@ if __name__ == "__main__":
     scrollbar.config(command=text_widget.yview)
 
     text_widget.tag_configure("bullet", lmargin1=20, lmargin2=20)
-    text_widget.config(bg="#363636", fg="white", insertbackground="white")
+    text_widget.config(bg="#363636", fg="lightblue", insertbackground="white")
 
     text_widget.bind("<KeyRelease>", lambda event: apply_markdown(text_widget))
     text_widget.bind("<Return>", handle_return)
     text_widget.bind("<Tab>", handle_tab)
     text_widget.bind('<Control-x>', delete_line)
     text_widget.bind('<Control-BackSpace>', ctrl_backspace)
-
+    text_widget.bind('<Alt-Shift-Down>', duplicate_line)
+    text_widget.bind('<Alt-Up>', move_line_up)
+    text_widget.bind('<Alt-Down>', move_line_down)
+    text_widget.bind('<Control-l>', insert_line_divider)
+    
     try:
         directory = os.path.dirname(get_exe_location())
         with open(os.path.join(directory, "sticky_note.pkl"), "rb") as f:
